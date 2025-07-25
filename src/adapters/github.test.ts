@@ -185,6 +185,75 @@ describe('GithubAdapter', () => {
     });
   });
 
+  describe('getBaseBranch', () => {
+    const REPO = {
+      owner: 'NerdWallet',
+      name: 'shepherd',
+      defaultBranch: 'master',
+    };
+
+    it('returns SHEPHERD_BASE_BRANCH environment variable when set', () => {
+      const originalEnv = process.env.SHEPHERD_BASE_BRANCH;
+      process.env.SHEPHERD_BASE_BRANCH = 'develop';
+
+      const context = mockMigrationContext();
+      const octokit = {} as any as Octokit;
+      const service = new GithubService(context, octokit);
+      const adapter = new GithubAdapter(context, service);
+
+      const result = adapter.getBaseBranch(REPO);
+
+      expect(result).toBe('develop');
+
+      // Restore original environment
+      if (originalEnv) {
+        process.env.SHEPHERD_BASE_BRANCH = originalEnv;
+      } else {
+        delete process.env.SHEPHERD_BASE_BRANCH;
+      }
+    });
+
+    it('returns repo.defaultBranch when SHEPHERD_BASE_BRANCH is not set', () => {
+      const originalEnv = process.env.SHEPHERD_BASE_BRANCH;
+      delete process.env.SHEPHERD_BASE_BRANCH;
+
+      const context = mockMigrationContext();
+      const octokit = {} as any as Octokit;
+      const service = new GithubService(context, octokit);
+      const adapter = new GithubAdapter(context, service);
+
+      const result = adapter.getBaseBranch(REPO);
+
+      expect(result).toBe('master');
+
+      // Restore original environment
+      if (originalEnv) {
+        process.env.SHEPHERD_BASE_BRANCH = originalEnv;
+      }
+    });
+
+    it('returns repo.defaultBranch when SHEPHERD_BASE_BRANCH is empty string', () => {
+      const originalEnv = process.env.SHEPHERD_BASE_BRANCH;
+      process.env.SHEPHERD_BASE_BRANCH = '';
+
+      const context = mockMigrationContext();
+      const octokit = {} as any as Octokit;
+      const service = new GithubService(context, octokit);
+      const adapter = new GithubAdapter(context, service);
+
+      const result = adapter.getBaseBranch(REPO);
+
+      expect(result).toBe('master');
+
+      // Restore original environment
+      if (originalEnv) {
+        process.env.SHEPHERD_BASE_BRANCH = originalEnv;
+      } else {
+        delete process.env.SHEPHERD_BASE_BRANCH;
+      }
+    });
+  });
+
   describe('prRepo', () => {
     const REPO = {
       owner: 'NerdWallet',
@@ -214,6 +283,35 @@ describe('GithubAdapter', () => {
         title: 'Test migration',
         body: 'Test PR message',
       });
+    });
+
+    it('creates a new PR with SHEPHERD_BASE_BRANCH when environment variable is set', async () => {
+      const originalEnv = process.env.SHEPHERD_BASE_BRANCH;
+      process.env.SHEPHERD_BASE_BRANCH = 'develop';
+
+      const context = mockMigrationContext();
+      const octokit = {} as any as Octokit;
+      const service: any = new GithubService(context, octokit);
+      service.listPullRequests.mockResolvedValue([]);
+      const adapter = new GithubAdapter(context, service);
+
+      await adapter.createPullRequest(REPO, 'Test PR message');
+
+      expect(service.createPullRequest).toBeCalledWith({
+        owner: 'NerdWallet',
+        repo: 'shepherd',
+        head: 'test-migration',
+        base: 'develop',
+        title: 'Test migration',
+        body: 'Test PR message',
+      });
+
+      // Restore original environment
+      if (originalEnv) {
+        process.env.SHEPHERD_BASE_BRANCH = originalEnv;
+      } else {
+        delete process.env.SHEPHERD_BASE_BRANCH;
+      }
     });
 
     it('updates a PR if one exists and is open', async () => {

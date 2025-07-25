@@ -134,7 +134,7 @@ class GithubAdapter extends GitAdapter {
     const {
       migration: { spec },
     } = this.migrationContext;
-    const { owner, name, defaultBranch } = repo;
+    const { owner, name } = repo;
 
     // Let's check if a PR already exists
     const pullRequests = await this.githubService.listPullRequests({
@@ -166,7 +166,7 @@ class GithubAdapter extends GitAdapter {
         owner,
         repo: name,
         head: this.branchName,
-        base: defaultBranch,
+        base: this.getBaseBranch(repo),
         title: spec.title,
         body: message,
       });
@@ -276,6 +276,9 @@ class GithubAdapter extends GitAdapter {
   }
 
   public getBaseBranch(repo: IRepo): string {
+    if (process.env.SHEPHERD_BASE_BRANCH) {
+      return process.env.SHEPHERD_BASE_BRANCH;
+    }
     return repo.defaultBranch;
   }
 
